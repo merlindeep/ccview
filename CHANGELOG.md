@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-06-14
+
 ### Added
 
 - Console monitor for Claude usage limits backed by the OAuth usage endpoint.
@@ -22,7 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the recommended floor.
 - `--debug` diagnostics, `version` subcommand, and shell completions via Cobra.
 - Full Go project packaging: Makefile, golangci-lint config, GitHub Actions CI,
-  and a GoReleaser configuration (Homebrew formula prepared but not yet
-  published).
+  and a GoReleaser configuration that publishes binaries, checksums, and a
+  Homebrew tap formula (`brew install merlindeep/tap/ccview`).
 
-[Unreleased]: https://github.com/merlindeep/claude-cost-viewer/commits/main
+[Unreleased]: https://github.com/merlindeep/claude-cost-viewer/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/merlindeep/claude-cost-viewer/releases/tag/v0.1.0

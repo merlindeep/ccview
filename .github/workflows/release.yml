@@ -30,8 +30,8 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # The Homebrew formula is generated but not published yet
-          # (skip_upload: true in .goreleaser.yaml). When you are ready to
-          # publish to the tap, create a HOMEBREW_TAP_GITHUB_TOKEN secret and
-          # expose it here:
-          # HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+          # The default GITHUB_TOKEN cannot push to another repository, so the
+          # Homebrew formula is published to the tap (github.com/merlindeep/
+          # homebrew-tap) using a separate token with write access to it.
+          # Configure it as a repository secret named HOMEBREW_TAP_GITHUB_TOKEN.
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}

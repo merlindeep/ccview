@@ -83,8 +83,20 @@ If you have run Claude Code at least once, the token is already in place.
 
 ## Installation
 
-> The first tagged release is required for pre-built binaries and Homebrew.
-> Until then, install from source with the Go toolchain.
+### Homebrew (macOS and Linux)
+
+```sh
+brew install merlindeep/tap/ccview
+```
+
+This taps `merlindeep/homebrew-tap` and installs the latest release; upgrade
+later with `brew upgrade ccview`.
+
+### Pre-built binaries
+
+Download an archive for your platform from the
+[Releases](https://github.com/merlindeep/claude-cost-viewer/releases) page,
+extract it, and move `ccview` onto your `PATH`.
 
 ### With `go install` (Go 1.24+)
 
@@ -102,21 +114,6 @@ cd claude-cost-viewer
 make build      # produces ./bin/ccview
 # or:
 make install    # installs into $GOBIN
-```
-
-### Pre-built binaries
-
-After a release is published, download an archive for your platform from the
-[Releases](https://github.com/merlindeep/claude-cost-viewer/releases) page,
-extract it, and move `ccview` onto your `PATH`.
-
-### Homebrew (planned)
-
-A Homebrew formula is already wired up via GoReleaser but is **not published
-yet**. Once it is, installation will be:
-
-```sh
-brew install merlindeep/tap/ccview
 ```
 
 ## Usage

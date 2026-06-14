@@ -62,23 +62,29 @@ changelog:
       - "^ci:"
       - "Merge pull request"
 
-# Homebrew formula.
+# Homebrew tap formula.
 #
-# NOT PUBLISHED YET: `skip_upload: true` makes GoReleaser generate the formula
-# as a build artifact (under dist/) for review, but does NOT push it to the tap
-# repository. To start publishing later:
-#   1. Create the tap repo:  github.com/merlindeep/homebrew-tap
-#   2. Provide a token with write access to it as HOMEBREW_TAP_GITHUB_TOKEN
-#      (uncomment the `token:` line below).
-#   3. Set `skip_upload: false` (or remove the line).
-# Users will then be able to: brew install merlindeep/tap/ccview
+# We publish a formula (the `brews` section) rather than a cask: a formula
+# installs on both macOS and Linux — matching this project's darwin+linux build
+# matrix — whereas Homebrew casks are macOS-only. GoReleaser deprecated `brews`
+# in favour of `homebrew_casks` in v2.10, but the formula still works under the
+# pinned `~> v2` toolchain and stays the right fit for a cross-platform CLI.
+# See https://goreleaser.com/resources/deprecations/#brews — revisit before v3.
+#
+# On a tagged release GoReleaser pushes the generated formula to the tap repo
+# (github.com/merlindeep/homebrew-tap), enabling:
+#   brew install merlindeep/tap/ccview
+# This requires a HOMEBREW_TAP_GITHUB_TOKEN secret with write access to the tap
+# repo, exposed to the release workflow (.github/workflows/release.yml).
 brews:
   - name: ccview
-    skip_upload: true
+    # `auto` skips publishing the formula for prerelease tags (e.g. v1.0.0-rc1)
+    # while still publishing it for normal releases.
+    skip_upload: "auto"
     repository:
       owner: merlindeep
       name: homebrew-tap
-      # token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     directory: Formula
     homepage: "https://github.com/merlindeep/claude-cost-viewer"
     description: "Compact console monitor for Claude usage limits"
