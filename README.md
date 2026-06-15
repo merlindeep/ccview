@@ -23,6 +23,7 @@ It is intentionally small, dependency-light at its core, and fully tested.
 
 - [What it shows](#what-it-shows)
 - [How costs are fetched](#how-costs-are-fetched)
+- [Requirements](#requirements)
 - [Installation](#installation)
 - [Usage](#usage)
 - [Output modes](#output-modes)
@@ -80,6 +81,30 @@ priority order:
 3. `~/.claude/.credentials.json`.
 
 If you have run Claude Code at least once, the token is already in place.
+
+## Requirements
+
+`ccview` needs an OAuth token issued to **Claude Code (the CLI)**. The simplest
+way to get one is to install Claude Code and sign in once:
+
+```sh
+brew install --cask claude-code   # or: npm i -g @anthropic-ai/claude-code
+claude                            # complete the login once
+ccview                            # the token is now found
+```
+
+Claude Code and the desktop app share the same subscription, so the usage
+numbers match.
+
+> **The Claude desktop app on its own is not enough.** It signs in as an
+> encrypted web session (Electron `safeStorage`), not as a reusable OAuth bearer
+> token that `ccview` can read — so on a machine with only the desktop app
+> installed, no token is found. Install the Claude Code CLI (above), or export a
+> token into `CLAUDE_CODE_OAUTH_TOKEN`.
+
+Not sure which source is being picked up? Run `ccview --debug`: it prints a
+per-source breakdown (environment, Keychain, credentials file) so you can see
+exactly what was found and what was missing.
 
 ## Installation
 
