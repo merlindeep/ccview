@@ -39,6 +39,15 @@ type fakeResolver struct {
 
 func (r *fakeResolver) Resolve() (auth.Credentials, error) { return r.creds, r.err }
 
+// fakeDiagResolver also implements the optional Diagnose() capability that
+// runDebug uses to print a per-source breakdown.
+type fakeDiagResolver struct {
+	fakeResolver
+	diags []auth.SourceDiagnostic
+}
+
+func (r *fakeDiagResolver) Diagnose() []auth.SourceDiagnostic { return r.diags }
+
 type fakeFetcher struct {
 	u     *usage.Usage
 	raw   []byte
@@ -319,6 +328,32 @@ func TestRunDebugNoToken(t *testing.T) {
 	_ = runDebug(context.Background(), d, opts(render.ModeCompact, true))
 	if !strings.Contains(out.String(), "creds: NOT FOUND") {
 		t.Errorf("output:\n%s", out.String())
+	}
+}
+
+func TestRunDebugSourceBreakdown(t *testing.T) {
+	d, _, _, out, _ := newTestDeps()
+	d.Resolver = &fakeDiagResolver{
+		fakeResolver: fakeResolver{err: auth.ErrNotFound},
+		diags: []auth.SourceDiagnostic{
+			{Name: "env CLAUDE_CODE_OAUTH_TOKEN", Detail: "not set"},
+			{Name: `macOS Keychain "Claude Code-credentials"`, Detail: "not found or unreadable"},
+			{Name: "~/.claude/.credentials.json", Detail: "missing"},
+		},
+	}
+	if err := runDebug(context.Background(), d, opts(render.ModeCompact, true)); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"credential sources (priority order):",
+		"1. env CLAUDE_CODE_OAUTH_TOKEN — not set",
+		`2. macOS Keychain "Claude Code-credentials" — not found or unreadable`,
+		"3. ~/.claude/.credentials.json — missing",
+		"creds: NOT FOUND",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("debug breakdown missing %q:\n%s", want, out.String())
+		}
 	}
 }
 

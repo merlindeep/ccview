@@ -216,6 +216,18 @@ func runDebug(ctx context.Context, d deps, o runOptions) error {
 	fmt.Fprintln(out, "ccview --debug")
 	fmt.Fprintf(out, "User-Agent: claude-code/%s\n", ua)
 
+	// When the resolver supports it, print a per-source breakdown so a failed
+	// lookup is self-diagnosable (which sources were tried and what each held).
+	if dg, ok := d.Resolver.(interface {
+		Diagnose() []auth.SourceDiagnostic
+	}); ok {
+		fmt.Fprintln(out, "\ncredential sources (priority order):")
+		for i, s := range dg.Diagnose() {
+			fmt.Fprintf(out, "  %d. %s — %s\n", i+1, s.Name, s.Detail)
+		}
+		fmt.Fprintln(out)
+	}
+
 	creds, err := d.Resolver.Resolve()
 	if err != nil {
 		fmt.Fprintf(out, "creds: NOT FOUND — %v\n", err)

@@ -172,6 +172,90 @@ func (r *Resolver) Resolve() (Credentials, error) {
 	return Credentials{}, ErrNotFound
 }
 
+// SourceDiagnostic reports the outcome of probing a single credential source.
+// It deliberately never carries the token itself, so it is safe to print.
+type SourceDiagnostic struct {
+	// Name identifies the source, e.g. "env CLAUDE_CODE_OAUTH_TOKEN".
+	Name string
+	// Found is true when this source yielded a usable access token.
+	Found bool
+	// Detail is a short, non-secret explanation of the outcome.
+	Detail string
+}
+
+// Diagnose probes every credential source in priority order WITHOUT
+// short-circuiting and reports what each one yielded. Unlike [Resolver.Resolve],
+// it inspects all sources so callers can show why resolution failed. It never
+// returns or logs the token — only whether each source was present and usable.
+func (r *Resolver) Diagnose() []SourceDiagnostic {
+	return []SourceDiagnostic{
+		r.diagnoseEnv(),
+		r.diagnoseKeychain(),
+		r.diagnoseFile(),
+	}
+}
+
+func (r *Resolver) diagnoseEnv() SourceDiagnostic {
+	d := SourceDiagnostic{Name: "env CLAUDE_CODE_OAUTH_TOKEN"}
+	switch {
+	case r.Getenv == nil:
+		d.Detail = "unavailable"
+	case trim(r.Getenv("CLAUDE_CODE_OAUTH_TOKEN")) != "":
+		d.Found, d.Detail = true, "set"
+	default:
+		d.Detail = "not set"
+	}
+	return d
+}
+
+func (r *Resolver) diagnoseKeychain() SourceDiagnostic {
+	d := SourceDiagnostic{Name: `macOS Keychain "` + KeychainService + `"`}
+	switch {
+	case r.GOOS != "darwin":
+		d.Detail = "skipped (not macOS)"
+	case r.Keychain == nil:
+		d.Detail = "unavailable"
+	default:
+		blob, err := r.Keychain()
+		switch {
+		case err != nil:
+			d.Detail = "not found or unreadable"
+		default:
+			if _, ok := parseRaw(blob, ""); ok {
+				d.Found, d.Detail = true, "found"
+			} else {
+				d.Detail = "present but no accessToken"
+			}
+		}
+	}
+	return d
+}
+
+func (r *Resolver) diagnoseFile() SourceDiagnostic {
+	d := SourceDiagnostic{Name: "~/.claude/.credentials.json"}
+	if r.UserHomeDir == nil || r.ReadFile == nil {
+		d.Detail = "unavailable"
+		return d
+	}
+	home, err := r.UserHomeDir()
+	if err != nil {
+		d.Detail = "home directory unknown"
+		return d
+	}
+	path := filepath.Join(home, ".claude", ".credentials.json")
+	b, err := r.ReadFile(path)
+	if err != nil {
+		d.Detail = "missing"
+		return d
+	}
+	if _, ok := parseRaw(b, ""); ok {
+		d.Found, d.Detail = true, "found"
+	} else {
+		d.Detail = "present but no accessToken"
+	}
+	return d
+}
+
 func trim(s string) string {
 	return string(bytes.TrimSpace([]byte(s)))
 }

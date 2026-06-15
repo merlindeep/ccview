@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -140,6 +141,92 @@ func TestResolveNotFound(t *testing.T) {
 	}
 	if _, err := r.Resolve(); !errors.Is(err, ErrNotFound) {
 		t.Errorf("err = %v, want ErrNotFound", err)
+	}
+}
+
+func TestDiagnose(t *testing.T) {
+	dir := t.TempDir()
+	writeCreds(t, dir, sampleBlob)
+
+	// All three sources present on darwin.
+	all := (&Resolver{
+		GOOS:        "darwin",
+		Getenv:      envFrom(map[string]string{"CLAUDE_CODE_OAUTH_TOKEN": "tok"}),
+		Keychain:    func() ([]byte, error) { return []byte(sampleBlob), nil },
+		UserHomeDir: func() (string, error) { return dir, nil },
+		ReadFile:    os.ReadFile,
+	}).Diagnose()
+	if len(all) != 3 {
+		t.Fatalf("Diagnose() returned %d sources, want 3", len(all))
+	}
+	for _, s := range all {
+		if !s.Found {
+			t.Errorf("source %q should be found, got %+v", s.Name, s)
+		}
+	}
+
+	// Nothing present, off darwin: the keychain is skipped and never invoked.
+	none := (&Resolver{
+		GOOS:        "linux",
+		Getenv:      envFrom(nil),
+		Keychain:    func() ([]byte, error) { t.Fatal("keychain must not run off darwin"); return nil, nil },
+		UserHomeDir: func() (string, error) { return "", errors.New("no home") },
+		ReadFile:    os.ReadFile,
+	}).Diagnose()
+	for _, s := range none {
+		if s.Found {
+			t.Errorf("source %q should not be found, got %+v", s.Name, s)
+		}
+	}
+	if none[0].Detail != "not set" {
+		t.Errorf("env detail = %q", none[0].Detail)
+	}
+	if !strings.Contains(none[1].Detail, "macOS") {
+		t.Errorf("keychain detail = %q", none[1].Detail)
+	}
+	if none[2].Detail != "home directory unknown" {
+		t.Errorf("file detail = %q", none[2].Detail)
+	}
+
+	// Keychain unreadable; credentials file simply missing.
+	missingDir := t.TempDir()
+	degraded := (&Resolver{
+		GOOS:        "darwin",
+		Getenv:      envFrom(nil),
+		Keychain:    func() ([]byte, error) { return nil, errors.New("locked") },
+		UserHomeDir: func() (string, error) { return missingDir, nil },
+		ReadFile:    os.ReadFile,
+	}).Diagnose()
+	if degraded[1].Found || degraded[1].Detail != "not found or unreadable" {
+		t.Errorf("keychain diag = %+v", degraded[1])
+	}
+	if degraded[2].Found || degraded[2].Detail != "missing" {
+		t.Errorf("file diag = %+v", degraded[2])
+	}
+
+	// Present but invalid blobs in both the keychain and the file.
+	invalidDir := t.TempDir()
+	writeCreds(t, invalidDir, "{}")
+	invalid := (&Resolver{
+		GOOS:        "darwin",
+		Getenv:      envFrom(nil),
+		Keychain:    func() ([]byte, error) { return []byte("garbage"), nil },
+		UserHomeDir: func() (string, error) { return invalidDir, nil },
+		ReadFile:    os.ReadFile,
+	}).Diagnose()
+	if invalid[1].Found || !strings.Contains(invalid[1].Detail, "no accessToken") {
+		t.Errorf("keychain diag = %+v", invalid[1])
+	}
+	if invalid[2].Found || !strings.Contains(invalid[2].Detail, "no accessToken") {
+		t.Errorf("file diag = %+v", invalid[2])
+	}
+
+	// Nil dependencies must not panic and must report "unavailable".
+	nilDeps := (&Resolver{GOOS: "darwin"}).Diagnose()
+	for _, s := range nilDeps {
+		if s.Found || s.Detail != "unavailable" {
+			t.Errorf("nil-deps source %q = %+v, want unavailable", s.Name, s)
+		}
 	}
 }
 
