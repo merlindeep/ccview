@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/merlindeep/claude-cost-viewer/internal/usage"
+	"github.com/merlindeep/ccview/internal/usage"
 )
 
 // renderCompact reproduces the original at-a-glance view: for each provider a

@@ -1,10 +1,13 @@
 # ccview
 
-`ccview` is a compact console monitor for **Claude and Codex usage limits**. It
-shows the same utilization you see in the `/usage` view of Claude Code and in
-the desktop app's "Your usage limits" panel — straight from your terminal,
-refreshed on an interval. If you are logged into Codex (OpenAI/ChatGPT) too, it
-shows that side by side.
+`ccview` (**c**ompute **c**ost **view**) is a compact console monitor for **AI
+coding-agent usage limits**. It shows the same utilization you see in the
+`/usage` view of Claude Code (and `/status` in Codex) — straight from your
+terminal, refreshed on an interval. Log into more than one provider and it shows
+them side by side.
+
+**Supported providers:** Claude (Anthropic) and Codex (OpenAI/ChatGPT). The tool
+is provider-agnostic by design — more can be added without touching the display.
 
 ```text
 Claude usage  Max 20x
@@ -173,13 +176,13 @@ later with `brew upgrade ccview`.
 ### Pre-built binaries
 
 Download an archive for your platform from the
-[Releases](https://github.com/merlindeep/claude-cost-viewer/releases) page,
+[Releases](https://github.com/merlindeep/ccview/releases) page,
 extract it, and move `ccview` onto your `PATH`.
 
 ### With `go install` (Go 1.24+)
 
 ```sh
-go install github.com/merlindeep/claude-cost-viewer/cmd/ccview@latest
+go install github.com/merlindeep/ccview/cmd/ccview@latest
 ```
 
 This puts a `ccview` binary in `$(go env GOPATH)/bin`.
@@ -187,8 +190,8 @@ This puts a `ccview` binary in `$(go env GOPATH)/bin`.
 ### From source
 
 ```sh
-git clone https://github.com/merlindeep/claude-cost-viewer.git
-cd claude-cost-viewer
+git clone https://github.com/merlindeep/ccview.git
+cd ccview
 make build      # produces ./bin/ccview
 # or:
 make install    # installs into $GOBIN

@@ -18,7 +18,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/merlindeep/claude-cost-viewer/internal/usage"
+	"github.com/merlindeep/ccview/internal/usage"
 )
 
 // barWidth is the width of the usage bars in the dashboard.

@@ -9,7 +9,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/merlindeep/claude-cost-viewer/internal/usage"
+	"github.com/merlindeep/ccview/internal/usage"
 )
 
 var refNow = time.Date(2026, 6, 13, 12, 0, 0, 0, time.UTC)

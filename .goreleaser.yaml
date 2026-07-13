@@ -25,9 +25,9 @@ builds:
       - -trimpath
     ldflags:
       - -s -w
-      - -X github.com/merlindeep/claude-cost-viewer/internal/buildinfo.Version={{ .Version }}
-      - -X github.com/merlindeep/claude-cost-viewer/internal/buildinfo.Commit={{ .ShortCommit }}
-      - -X github.com/merlindeep/claude-cost-viewer/internal/buildinfo.Date={{ .Date }}
+      - -X github.com/merlindeep/ccview/internal/buildinfo.Version={{ .Version }}
+      - -X github.com/merlindeep/ccview/internal/buildinfo.Commit={{ .ShortCommit }}
+      - -X github.com/merlindeep/ccview/internal/buildinfo.Date={{ .Date }}
     goos:
       - darwin
       - linux
@@ -86,8 +86,8 @@ brews:
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     directory: Formula
-    homepage: "https://github.com/merlindeep/claude-cost-viewer"
-    description: "Compact console monitor for Claude usage limits"
+    homepage: "https://github.com/merlindeep/ccview"
+    description: "Compact console monitor for AI coding-agent usage limits"
     license: "0BSD"
     commit_author:
       name: goreleaser-bot

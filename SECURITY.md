@@ -27,7 +27,7 @@ version and `main`.
 
 Please report suspected vulnerabilities **privately**, not via a public issue:
 
-- Preferred: open a [GitHub Security Advisory](https://github.com/merlindeep/claude-cost-viewer/security/advisories/new).
+- Preferred: open a [GitHub Security Advisory](https://github.com/merlindeep/ccview/security/advisories/new).
 - Alternatively, contact the maintainer through the address on their GitHub
   profile.
 

@@ -1,4 +1,4 @@
-module github.com/merlindeep/claude-cost-viewer
+module github.com/merlindeep/ccview
 
 go 1.24.0
 

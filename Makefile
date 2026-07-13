@@ -3,7 +3,7 @@
 # Common developer tasks. Run `make help` for a summary.
 
 BINARY      := ccview
-PKG         := github.com/merlindeep/claude-cost-viewer
+PKG         := github.com/merlindeep/ccview
 CMD         := ./cmd/ccview
 BIN_DIR     := bin
 

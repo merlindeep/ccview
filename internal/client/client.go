@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/merlindeep/claude-cost-viewer/internal/usage"
+	"github.com/merlindeep/ccview/internal/usage"
 )
 
 // Default request parameters.

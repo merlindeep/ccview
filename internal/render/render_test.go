@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/merlindeep/claude-cost-viewer/internal/usage"
+	"github.com/merlindeep/ccview/internal/usage"
 )
 
 func f(v float64) *float64 { return &v }

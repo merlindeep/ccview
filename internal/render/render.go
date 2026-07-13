@@ -20,7 +20,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/merlindeep/claude-cost-viewer/internal/usage"
+	"github.com/merlindeep/ccview/internal/usage"
 )
 
 // DefaultBarWidth is the number of cells in a usage bar.

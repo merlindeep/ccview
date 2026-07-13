@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/merlindeep/claude-cost-viewer/internal/usage"
+	"github.com/merlindeep/ccview/internal/usage"
 )
 
 // onelineLabel produces a terse label for the single-line view: "5h" for the
