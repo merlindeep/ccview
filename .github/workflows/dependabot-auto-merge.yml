@@ -1,0 +1,37 @@
+name: Dependabot auto-merge
+
+# Asks Dependabot to squash-merge its own pull request once the required checks
+# pass, but only for low-risk updates (patch and minor). Major bumps are left for
+# a human to review and merge: the release workflow runs only on tag pushes, so a
+# major bump to a release-time action (e.g. goreleaser-action) is not exercised
+# by pull-request checks and deserves a look.
+#
+# The `@dependabot squash and merge` comment (rather than GitHub's native
+# auto-merge) needs no repository setting beyond squash-merging being allowed,
+# and Dependabot waits for CI to go green before merging.
+
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Dependabot metadata
+        id: meta
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable squash auto-merge for patch and minor updates
+        if: >-
+          steps.meta.outputs.update-type == 'version-update:semver-patch' ||
+          steps.meta.outputs.update-type == 'version-update:semver-minor'
+        run: gh pr comment "$PR_URL" --body "@dependabot squash and merge"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
