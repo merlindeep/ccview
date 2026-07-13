@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-13
+
 ### Added
 
 - **Codex (OpenAI/ChatGPT) usage support.** `ccview` now reads the ChatGPT
@@ -29,6 +31,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   single-provider `{"plan", "meters"}` document.
 - The `table` mode now heads each provider with a title line instead of the
   standalone `Plan:` line.
+
+## [0.2.0] - 2026-06-17
+
+### Added
+
+- Opt-in `--auto-reload-expired-token`: when the stored token has expired,
+  `ccview` runs Claude Code once to renew it (at most once every five minutes),
+  then re-reads the refreshed token and continues. Overridable with
+  `CCVIEW_RELOAD_CMD`; `ccview` still never reads or writes the token itself.
+- Graceful handling of a token that expires mid-session: the credential chain is
+  re-read (picking up a background refresh) and the request retried once before
+  a short, actionable message is shown.
 
 ## [0.1.1] - 2026-06-14
 
@@ -62,6 +76,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and a GoReleaser configuration that publishes binaries, checksums, and a
   Homebrew tap formula (`brew install merlindeep/tap/ccview`).
 
-[Unreleased]: https://github.com/merlindeep/claude-cost-viewer/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/merlindeep/claude-cost-viewer/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/merlindeep/claude-cost-viewer/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/merlindeep/claude-cost-viewer/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/merlindeep/claude-cost-viewer/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/merlindeep/claude-cost-viewer/releases/tag/v0.1.0
