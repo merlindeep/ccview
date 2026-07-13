@@ -12,11 +12,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/merlindeep/claude-cost-viewer/internal/auth"
-	"github.com/merlindeep/claude-cost-viewer/internal/client"
-	"github.com/merlindeep/claude-cost-viewer/internal/render"
-	"github.com/merlindeep/claude-cost-viewer/internal/tui"
-	"github.com/merlindeep/claude-cost-viewer/internal/usage"
+	"github.com/merlindeep/ccview/internal/auth"
+	"github.com/merlindeep/ccview/internal/client"
+	"github.com/merlindeep/ccview/internal/render"
+	"github.com/merlindeep/ccview/internal/tui"
+	"github.com/merlindeep/ccview/internal/usage"
 )
 
 var refNow = time.Date(2026, 6, 13, 12, 0, 0, 0, time.UTC)

@@ -26,15 +26,16 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
-	"github.com/merlindeep/claude-cost-viewer/internal/auth"
-	"github.com/merlindeep/claude-cost-viewer/internal/buildinfo"
-	"github.com/merlindeep/claude-cost-viewer/internal/client"
-	"github.com/merlindeep/claude-cost-viewer/internal/render"
-	"github.com/merlindeep/claude-cost-viewer/internal/tui"
-	"github.com/merlindeep/claude-cost-viewer/internal/usage"
+	"github.com/merlindeep/ccview/internal/auth"
+	"github.com/merlindeep/ccview/internal/buildinfo"
+	"github.com/merlindeep/ccview/internal/client"
+	"github.com/merlindeep/ccview/internal/render"
+	"github.com/merlindeep/ccview/internal/tui"
+	"github.com/merlindeep/ccview/internal/usage"
 )
 
-const longDescription = `ccview is a compact console monitor for Claude and Codex usage limits.
+const longDescription = `ccview (compute cost view) is a compact console monitor for AI coding-agent
+usage limits. Supported providers today: Claude and Codex.
 
 It shows the same utilization the "/usage" view in Claude Code (and "/status" in
 Codex) reports, read from each provider's usage endpoint:
@@ -133,7 +134,7 @@ func newRootCmd(d deps) *cobra.Command {
 
 	root := &cobra.Command{
 		Use:           "ccview [interval-seconds]",
-		Short:         "Compact console monitor for Claude usage limits",
+		Short:         "Compact console monitor for AI coding-agent usage limits",
 		Long:          longDescription,
 		Args:          cobra.MaximumNArgs(1),
 		SilenceUsage:  true,

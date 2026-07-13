@@ -10,11 +10,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/merlindeep/claude-cost-viewer/internal/auth"
-	"github.com/merlindeep/claude-cost-viewer/internal/client"
-	"github.com/merlindeep/claude-cost-viewer/internal/render"
-	"github.com/merlindeep/claude-cost-viewer/internal/tui"
-	"github.com/merlindeep/claude-cost-viewer/internal/usage"
+	"github.com/merlindeep/ccview/internal/auth"
+	"github.com/merlindeep/ccview/internal/client"
+	"github.com/merlindeep/ccview/internal/render"
+	"github.com/merlindeep/ccview/internal/tui"
+	"github.com/merlindeep/ccview/internal/usage"
 )
 
 // maxBackoff caps the exponential backoff applied after HTTP 429 responses.

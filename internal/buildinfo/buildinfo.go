@@ -2,7 +2,7 @@
 //
 // The variables below are overridden at build time via -ldflags, for example:
 //
-//	go build -ldflags "-X github.com/merlindeep/claude-cost-viewer/internal/buildinfo.Version=1.2.3"
+//	go build -ldflags "-X github.com/merlindeep/ccview/internal/buildinfo.Version=1.2.3"
 //
 // GoReleaser sets all three during a release build (see .goreleaser.yaml).
 package buildinfo

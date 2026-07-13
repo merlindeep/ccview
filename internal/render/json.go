@@ -5,7 +5,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/merlindeep/claude-cost-viewer/internal/usage"
+	"github.com/merlindeep/ccview/internal/usage"
 )
 
 // jsonMeter is the machine-readable representation of a single meter.

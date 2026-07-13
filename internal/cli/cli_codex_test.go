@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/merlindeep/claude-cost-viewer/internal/auth"
-	"github.com/merlindeep/claude-cost-viewer/internal/render"
-	"github.com/merlindeep/claude-cost-viewer/internal/tui"
-	"github.com/merlindeep/claude-cost-viewer/internal/usage"
+	"github.com/merlindeep/ccview/internal/auth"
+	"github.com/merlindeep/ccview/internal/render"
+	"github.com/merlindeep/ccview/internal/tui"
+	"github.com/merlindeep/ccview/internal/usage"
 )
 
 // fakeCodexFetcher returns a canned Codex payload (or an error).

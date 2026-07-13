@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/merlindeep/claude-cost-viewer/internal/usage"
+	"github.com/merlindeep/ccview/internal/usage"
 )
 
 // renderTable renders an aligned table with every available column, one table

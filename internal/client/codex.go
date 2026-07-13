@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/merlindeep/claude-cost-viewer/internal/usage"
+	"github.com/merlindeep/ccview/internal/usage"
 )
 
 // Codex request parameters. Like the Claude endpoint this one is undocumented:
@@ -23,7 +23,7 @@ const (
 	// CodexBaseURL is the Codex usage endpoint.
 	CodexBaseURL = "https://chatgpt.com/backend-api/wham/usage"
 	// CodexUserAgent identifies the client to the endpoint.
-	CodexUserAgent = "ccview (+https://github.com/merlindeep/claude-cost-viewer)"
+	CodexUserAgent = "ccview (+https://github.com/merlindeep/ccview)"
 	// CodexAccountHeader carries the ChatGPT account id.
 	CodexAccountHeader = "chatgpt-account-id"
 )

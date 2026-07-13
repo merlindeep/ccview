@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/merlindeep/claude-cost-viewer/internal/usage"
+	"github.com/merlindeep/ccview/internal/usage"
 )
 
 // twoProviderSnaps returns a Claude and a Codex snapshot for multi-block tests.

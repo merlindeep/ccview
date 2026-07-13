@@ -12,8 +12,8 @@ build, test, and submit changes.
 ## Getting started
 
 ```sh
-git clone https://github.com/merlindeep/claude-cost-viewer.git
-cd claude-cost-viewer
+git clone https://github.com/merlindeep/ccview.git
+cd ccview
 make build
 ./bin/ccview --help
 ```
