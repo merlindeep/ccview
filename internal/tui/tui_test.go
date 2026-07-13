@@ -29,6 +29,13 @@ func testConfig(fetch func() Result) Config {
 	return Config{Fetch: fetch, Interval: time.Millisecond, Now: func() time.Time { return refNow }}
 }
 
+// sampleSnaps wraps sampleUsage in a single Claude snapshot on the Max plan.
+func sampleSnaps() []usage.Snapshot { return sampleSnapsPlan("Max 20x") }
+
+func sampleSnapsPlan(plan string) []usage.Snapshot {
+	return []usage.Snapshot{usage.ClaudeSnapshot(sampleUsage(), plan, usage.MeterOptions{})}
+}
+
 func TestNewDefaults(t *testing.T) {
 	m := New(Config{Fetch: func() Result { return Result{} }})
 	if m.cfg.Now == nil {
@@ -43,7 +50,7 @@ func TestNewDefaults(t *testing.T) {
 }
 
 func TestInit(t *testing.T) {
-	m := New(testConfig(func() Result { return Result{Usage: sampleUsage()} }))
+	m := New(testConfig(func() Result { return Result{Snapshots: sampleSnaps()} }))
 	if m.Init() == nil {
 		t.Error("Init should return a command")
 	}
@@ -51,13 +58,13 @@ func TestInit(t *testing.T) {
 
 func TestFetchCmd(t *testing.T) {
 	called := 0
-	m := New(testConfig(func() Result { called++; return Result{Usage: sampleUsage(), Plan: "Max 20x"} }))
+	m := New(testConfig(func() Result { called++; return Result{Snapshots: sampleSnaps()} }))
 	msg := m.fetchCmd()()
 	res, ok := msg.(resultMsg)
 	if !ok {
 		t.Fatalf("fetchCmd produced %T, want resultMsg", msg)
 	}
-	if called != 1 || res.Plan != "Max 20x" {
+	if called != 1 || len(res.Snapshots) != 1 || res.Snapshots[0].Plan != "Max 20x" {
 		t.Errorf("fetch not invoked correctly: called=%d res=%+v", called, res)
 	}
 }
@@ -92,7 +99,7 @@ func TestUpdateQuitKeys(t *testing.T) {
 
 func TestUpdateRefreshKey(t *testing.T) {
 	called := 0
-	m := New(testConfig(func() Result { called++; return Result{Usage: sampleUsage()} }))
+	m := New(testConfig(func() Result { called++; return Result{Snapshots: sampleSnaps()} }))
 	next, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")})
 	if !next.(Model).fetching {
 		t.Error("refresh should set fetching")
@@ -138,12 +145,12 @@ func TestUpdateTick(t *testing.T) {
 
 func TestUpdateResultSuccess(t *testing.T) {
 	m := New(testConfig(func() Result { return Result{} }))
-	next, _ := m.Update(resultMsg{Usage: sampleUsage(), Plan: "Pro"})
+	next, _ := m.Update(resultMsg{Snapshots: sampleSnapsPlan("Pro")})
 	nm := next.(Model)
 	if nm.fetching {
 		t.Error("result should clear fetching")
 	}
-	if nm.err != nil || nm.usage == nil || nm.plan != "Pro" {
+	if nm.err != nil || len(nm.snapshots) != 1 || nm.snapshots[0].Plan != "Pro" {
 		t.Errorf("result not stored: %+v", nm)
 	}
 	if nm.lastUpdate.IsZero() {
@@ -153,13 +160,13 @@ func TestUpdateResultSuccess(t *testing.T) {
 
 func TestUpdateResultError(t *testing.T) {
 	m := New(testConfig(func() Result { return Result{} }))
-	m.usage = sampleUsage() // pretend a previous success
+	m.snapshots = sampleSnaps() // pretend a previous success
 	next, _ := m.Update(resultMsg{Err: errors.New("boom")})
 	nm := next.(Model)
 	if nm.err == nil {
 		t.Error("error should be stored")
 	}
-	if nm.usage == nil {
+	if nm.snapshots == nil {
 		t.Error("previous snapshot should be retained on error")
 	}
 }
@@ -181,8 +188,7 @@ func TestViewLoading(t *testing.T) {
 
 func TestViewSuccess(t *testing.T) {
 	m := New(testConfig(func() Result { return Result{} }))
-	m.usage = sampleUsage()
-	m.plan = "Max 20x"
+	m.snapshots = sampleSnaps()
 	m.lastUpdate = refNow
 	m.fetching = false
 	out := m.View()
@@ -195,7 +201,7 @@ func TestViewSuccess(t *testing.T) {
 
 func TestViewNoMeters(t *testing.T) {
 	m := New(testConfig(func() Result { return Result{} }))
-	m.usage = &usage.Usage{}
+	m.snapshots = []usage.Snapshot{usage.ClaudeSnapshot(&usage.Usage{}, "", usage.MeterOptions{})}
 	if !strings.Contains(m.View(), "(no usage windows reported)") {
 		t.Errorf("view = %q", m.View())
 	}
@@ -212,7 +218,7 @@ func TestViewError(t *testing.T) {
 
 func TestViewFetchingFooter(t *testing.T) {
 	m := New(testConfig(func() Result { return Result{} }))
-	m.usage = sampleUsage()
+	m.snapshots = sampleSnaps()
 	m.fetching = true
 	if !strings.Contains(m.View(), "refreshing") {
 		t.Error("fetching footer should mention refreshing")
@@ -285,7 +291,7 @@ func TestRunWithCancelledContext(t *testing.T) {
 	cancel()
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, testConfig(func() Result { return Result{Usage: sampleUsage()} }))
+		done <- Run(ctx, testConfig(func() Result { return Result{Snapshots: sampleSnaps()} }))
 	}()
 	select {
 	case <-done:

@@ -1,9 +1,10 @@
 # ccview
 
-`ccview` is a compact console monitor for **Claude usage limits**. It shows the
-same utilization you see in the `/usage` view of Claude Code and in the desktop
-app's "Your usage limits" panel — straight from your terminal, refreshed on an
-interval.
+`ccview` is a compact console monitor for **Claude and Codex usage limits**. It
+shows the same utilization you see in the `/usage` view of Claude Code and in
+the desktop app's "Your usage limits" panel — straight from your terminal,
+refreshed on an interval. If you are logged into Codex (OpenAI/ChatGPT) too, it
+shows that side by side.
 
 ```text
 Claude usage  Max 20x
@@ -12,10 +13,15 @@ Claude usage  Max 20x
     opus    ██████████████████░░  90%   resets Sat 00:00
   Extra     ███░░░░░░░░░░░░░░░░░  16%   $3.20 / $20.00
 
+Codex usage  Team
+  Weekly    ██░░░░░░░░░░░░░░░░░░  11%   resets Mon 10:53
+
 updated 12:00:00 · every 1m0s · Ctrl+C to quit
 ```
 
-It is intentionally small, dependency-light at its core, and fully tested.
+Whichever providers you are logged into are shown; restrict with
+`--provider claude|codex|all`. It is intentionally small, dependency-light at
+its core, and fully tested.
 
 ---
 
@@ -98,6 +104,37 @@ in every watch mode, including the TUI. Override the command it runs with
 `ccview` still never reads or writes the token itself — it only invokes the
 helper and re-reads the credential chain above.
 
+### Codex (OpenAI / ChatGPT)
+
+Codex usage comes from the equivalent undocumented endpoint the ChatGPT web app
+and the Codex CLI read:
+
+```
+GET https://chatgpt.com/backend-api/wham/usage
+```
+
+It returns the rolling (5-hour, on individual plans) and weekly rate-limit
+windows plus the plan type — the same source of truth as `codex /status`,
+without spending quota. `ccview` sends:
+
+- `Authorization: Bearer <oauth-token>`
+- `chatgpt-account-id: <account-id>`
+
+Both values are **read, never written**, from, in priority order:
+
+1. the `CODEX_ACCESS_TOKEN` environment variable (a bare token);
+2. `~/.codex/auth.json` (written by the Codex CLI; provides both the token and
+   the account id).
+
+Token expiry is read from the access token's JWT `exp` claim. The same
+expiry/retry handling as Claude applies; with `--auto-reload-expired-token`,
+`ccview` runs `codex login status` (a quota-free login check that refreshes the
+token) to renew it — override with `CCVIEW_CODEX_RELOAD_CMD`.
+
+If credentials for both providers are present, both are shown, each in its own
+titled block. Use `--provider claude`, `--provider codex`, or the default
+`--provider all` to choose.
+
 ## Requirements
 
 `ccview` needs an OAuth token issued to **Claude Code (the CLI)**. The simplest
@@ -176,7 +213,8 @@ the default, familiar view. Press `Ctrl+C` to quit.
 | `-m`, `--mode`                | `compact` | Output mode: `compact`, `table`, `json`, `oneline`, `tui`.   |
 | `--json`                      | `false`   | Shortcut for `--mode json`.                                  |
 | `-a`, `--all`                 | `false`   | Show per-model windows even when at 0%.                      |
-| `--auto-reload-expired-token` | `false`   | Opt-in: renew an expired token by invoking Claude Code.      |
+| `-p`, `--provider`            | `all`     | Which providers to show: `all`, `claude`, `codex`.           |
+| `--auto-reload-expired-token` | `false`   | Opt-in: renew an expired token by invoking the provider CLI. |
 | `-d`, `--debug`               | `false`   | Print diagnostics (token source, HTTP status, raw response). |
 | `--no-color`                  | `false`   | Disable ANSI colour (also honours the `NO_COLOR` env var).   |
 | `-h`, `--help`                |           | Help for any command.                                        |
@@ -208,11 +246,10 @@ ccview --debug              # diagnose token / endpoint problems
 **compact** (default) — the at-a-glance bar view shown at the top of this
 README. Intended for the long-running watch loop.
 
-**table** — an aligned table with every available column:
+**table** — an aligned table with every available column, one per provider:
 
 ```text
-Plan: Max 20x
-
+Claude usage  Max 20x
 METER    USAGE                   %  RESETS     DETAIL
 Session  ████████░░░░░░░░░░░░  42%  in 2h 22m
 Weekly   ███░░░░░░░░░░░░░░░░░  13%  Sat 00:00
@@ -220,30 +257,37 @@ Opus     ██████████████████░░  90%  Sat 
 Extra    ███░░░░░░░░░░░░░░░░░  16%  —          $3.20 / $20.00
 ```
 
-**json** — stable, machine-readable output for scripting and status bars. Reset
-times are emitted both as RFC3339 timestamps and as seconds remaining:
+**json** — stable, machine-readable output for scripting and status bars.
+Providers are always emitted as an array; reset times are emitted both as
+RFC3339 timestamps and as seconds remaining:
 
 ```json
 {
-  "plan": "Max 20x",
   "generated_at": "2026-06-13T12:00:00Z",
-  "meters": [
+  "providers": [
     {
-      "key": "five_hour",
-      "label": "Session",
-      "kind": "session",
-      "percent": 42,
-      "resets_at": "2026-06-13T14:22:00Z",
-      "resets_in_seconds": 8520
+      "provider": "claude",
+      "plan": "Max 20x",
+      "meters": [
+        {
+          "key": "five_hour",
+          "label": "Session",
+          "kind": "session",
+          "percent": 42,
+          "resets_at": "2026-06-13T14:22:00Z",
+          "resets_in_seconds": 8520
+        }
+      ]
     }
   ]
 }
 ```
 
-**oneline** — one terse line, ideal for tmux / sketchybar / polybar:
+**oneline** — one terse line, ideal for tmux / sketchybar / polybar (providers
+separated by two spaces):
 
 ```text
-Claude 5h:42% 7d:13% opus:90% extra:16%
+Claude 5h:42% 7d:13% opus:90% extra:16%  Codex 7d:11%
 ```
 
 **tui** — an interactive full-screen dashboard (built with Bubble Tea). Keys:
@@ -255,12 +299,14 @@ Environment variables:
 
 | Variable                  | Purpose                                                             |
 | ------------------------- | ------------------------------------------------------------------- |
-| `CLAUDE_CODE_OAUTH_TOKEN` | Provide the OAuth token directly (highest priority).                |
+| `CLAUDE_CODE_OAUTH_TOKEN` | Provide the Claude OAuth token directly (highest priority).         |
+| `CODEX_ACCESS_TOKEN`      | Provide the Codex OAuth token directly (highest priority).          |
 | `CLAUDE_CODE_VERSION`     | Override the version used in the `User-Agent` header.               |
 | `NO_COLOR`                | If set, disables ANSI colour (in addition to `--no-color`).         |
 | `CCVIEW_MOCK_FILE`        | Render a usage payload from a JSON file instead of calling the API. |
 | `CCVIEW_MOCK_PLAN`        | Plan label used together with `CCVIEW_MOCK_FILE`.                   |
-| `CCVIEW_RELOAD_CMD`       | Command used by `--auto-reload-expired-token` to renew the token.   |
+| `CCVIEW_RELOAD_CMD`       | Command used by `--auto-reload-expired-token` to renew the Claude token. |
+| `CCVIEW_CODEX_RELOAD_CMD` | Command used by `--auto-reload-expired-token` to renew the Codex token.  |
 
 If `CLAUDE_CODE_VERSION` is not set, `ccview` runs `claude --version` to detect
 the installed Claude Code version, falling back to a built-in default.

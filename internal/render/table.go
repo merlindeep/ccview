@@ -4,25 +4,38 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/merlindeep/claude-cost-viewer/internal/usage"
 )
 
-// renderTable renders an aligned table with every available column. Column
-// widths are computed from the plain (uncoloured) cell text, then colour is
-// applied after padding, so alignment holds whether or not colour is enabled.
-func renderTable(w io.Writer, u *usage.Usage, opt Options) error {
+// renderTable renders an aligned table with every available column, one table
+// per provider, stacked with a blank line between. Column widths are computed
+// from the plain (uncoloured) cell text, then colour is applied after padding,
+// so alignment holds whether or not colour is enabled.
+func renderTable(w io.Writer, snaps []usage.Snapshot, opt Options) error {
 	var b strings.Builder
 	now := opt.now()
-
-	if opt.PlanLabel != "" {
-		b.WriteString("Plan: " + wrap(opt.Color, ansiBold, opt.PlanLabel) + "\n\n")
+	for i, s := range snaps {
+		if i > 0 {
+			b.WriteString("\n")
+		}
+		tableBlock(&b, s, opt, now)
 	}
+	return writeString(w, b.String())
+}
 
-	meters := u.Meters(opt.meterOptions())
-	if len(meters) == 0 {
+// tableBlock writes a single provider's title and usage table.
+func tableBlock(b *strings.Builder, s usage.Snapshot, opt Options, now time.Time) {
+	title := wrap(opt.Color, ansiBold, s.Title())
+	if s.Plan != "" {
+		title += "  " + wrap(opt.Color, ansiDim, s.Plan)
+	}
+	b.WriteString(title + "\n")
+
+	if len(s.Meters) == 0 {
 		b.WriteString(wrap(opt.Color, ansiDim, "(no usage windows reported)") + "\n")
-		return writeString(w, b.String())
+		return
 	}
 
 	type row struct {
@@ -32,9 +45,9 @@ func renderTable(w io.Writer, u *usage.Usage, opt Options) error {
 		reset  string
 		detail string
 	}
-	rows := make([]row, 0, len(meters))
+	rows := make([]row, 0, len(s.Meters))
 	hasDetail := false
-	for _, m := range meters {
+	for _, m := range s.Meters {
 		reset := resetText(m, now)
 		if reset == "" {
 			reset = "—"
@@ -87,5 +100,4 @@ func renderTable(w io.Writer, u *usage.Usage, opt Options) error {
 		}
 		b.WriteString(strings.TrimRight(line, " ") + "\n")
 	}
-	return writeString(w, b.String())
 }

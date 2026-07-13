@@ -452,12 +452,21 @@ func TestReloadCmdline(t *testing.T) {
 }
 
 func TestRunReload(t *testing.T) {
-	// Harmless overrides keep the test off the network and away from claude.
-	if err := runReload(context.Background(), func(string) string { return "exit 0" }); err != nil {
+	// Harmless commands keep the test off the network and away from claude.
+	if err := runReload(context.Background(), "exit 0"); err != nil {
 		t.Errorf("a zero-exit refresh command should succeed: %v", err)
 	}
-	if err := runReload(context.Background(), func(string) string { return "exit 3" }); err == nil {
+	if err := runReload(context.Background(), "exit 3"); err == nil {
 		t.Error("a non-zero refresh command should report an error")
+	}
+}
+
+func TestCodexReloadCmdline(t *testing.T) {
+	if got := codexReloadCmdline(func(string) string { return "" }); got != defaultCodexReloadCmd {
+		t.Errorf("empty env should use the default, got %q", got)
+	}
+	if got := codexReloadCmdline(func(string) string { return "  my-codex --x  " }); got != "my-codex --x" {
+		t.Errorf("override = %q", got)
 	}
 }
 
@@ -688,7 +697,7 @@ func TestRunTUIFetchClosures(t *testing.T) {
 		t.Fatal("RunTUI did not receive a fetch function")
 	}
 	// Success.
-	if r := captured.Fetch(); r.Err != nil || r.Usage == nil || r.Plan != "Max 20x" {
+	if r := captured.Fetch(); r.Err != nil || len(r.Snapshots) != 1 || r.Snapshots[0].Plan != "Max 20x" {
 		t.Errorf("fetch success = %+v", r)
 	}
 	// Credential error.
@@ -716,7 +725,7 @@ func TestRunTUIMockFetch(t *testing.T) {
 	d.RunTUI = func(_ context.Context, cfg tui.Config) error { captured = cfg; return nil }
 	_ = runTUI(context.Background(), d, runOptions{Interval: time.Minute})
 
-	if r := captured.Fetch(); r.Err != nil || r.Plan != "Pro" {
+	if r := captured.Fetch(); r.Err != nil || len(r.Snapshots) != 1 || r.Snapshots[0].Plan != "Pro" {
 		t.Errorf("mock fetch = %+v", r)
 	}
 	// Missing mock file -> error.
@@ -790,7 +799,7 @@ func TestRunTUIAutoReloadRecovers(t *testing.T) {
 	if reloads != 1 {
 		t.Errorf("reload attempts = %d, want 1", reloads)
 	}
-	if r.Err != nil || r.Plan != "Max 20x" {
+	if r.Err != nil || len(r.Snapshots) != 1 || r.Snapshots[0].Plan != "Max 20x" {
 		t.Errorf("expected a successful fetch after reload, got %+v", r)
 	}
 }

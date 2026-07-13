@@ -28,7 +28,17 @@ func sampleUsage() *usage.Usage {
 }
 
 func baseOpts() Options {
-	return Options{Color: false, Now: refNow, PlanLabel: "Max 20x"}
+	return Options{Color: false, Now: refNow}
+}
+
+// sampleSnaps wraps sampleUsage in a single Claude snapshot on the Max plan.
+func sampleSnaps() []usage.Snapshot {
+	return []usage.Snapshot{usage.ClaudeSnapshot(sampleUsage(), "Max 20x", usage.MeterOptions{})}
+}
+
+// emptySnaps is a single Claude snapshot with no meters.
+func emptySnaps() []usage.Snapshot {
+	return []usage.Snapshot{usage.ClaudeSnapshot(&usage.Usage{}, "", usage.MeterOptions{})}
 }
 
 type errWriter struct{}
@@ -138,14 +148,14 @@ func TestRoundPct(t *testing.T) {
 }
 
 func TestRenderUnknownMode(t *testing.T) {
-	if err := Render(io.Discard, sampleUsage(), Mode("bogus"), baseOpts()); err == nil {
+	if err := Render(io.Discard, sampleSnaps(), Mode("bogus"), baseOpts()); err == nil {
 		t.Error("expected error for unknown mode")
 	}
 }
 
 func TestRenderCompactGolden(t *testing.T) {
 	var buf bytes.Buffer
-	if err := Render(&buf, sampleUsage(), ModeCompact, baseOpts()); err != nil {
+	if err := Render(&buf, sampleSnaps(), ModeCompact, baseOpts()); err != nil {
 		t.Fatal(err)
 	}
 	want := []string{
@@ -187,7 +197,7 @@ func TestCompactLineExtraWithResetAndDetail(t *testing.T) {
 
 func TestRenderCompactNoMeters(t *testing.T) {
 	var buf bytes.Buffer
-	if err := Render(&buf, &usage.Usage{}, ModeCompact, Options{Now: refNow}); err != nil {
+	if err := Render(&buf, emptySnaps(), ModeCompact, Options{Now: refNow}); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(buf.String(), "(no usage windows reported)") {
@@ -199,7 +209,7 @@ func TestRenderCompactColor(t *testing.T) {
 	var buf bytes.Buffer
 	opt := baseOpts()
 	opt.Color = true
-	if err := Render(&buf, sampleUsage(), ModeCompact, opt); err != nil {
+	if err := Render(&buf, sampleSnaps(), ModeCompact, opt); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(buf.String(), "\033[") {
@@ -209,19 +219,19 @@ func TestRenderCompactColor(t *testing.T) {
 
 func TestRenderTable(t *testing.T) {
 	var buf bytes.Buffer
-	if err := Render(&buf, sampleUsage(), ModeTable, baseOpts()); err != nil {
+	if err := Render(&buf, sampleSnaps(), ModeTable, baseOpts()); err != nil {
 		t.Fatal(err)
 	}
 	out := buf.String()
-	for _, want := range []string{"Plan: Max 20x", "METER", "USAGE", "RESETS", "DETAIL", "Session", "in 3h 44m", "$3.20 / $20.00", "—"} {
+	for _, want := range []string{"Claude usage", "Max 20x", "METER", "USAGE", "RESETS", "DETAIL", "Session", "in 3h 44m", "$3.20 / $20.00", "—"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("table output missing %q:\n%s", want, out)
 		}
 	}
-	// Plan line, blank line, header, 5 data rows.
+	// Title line, header, 5 data rows.
 	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
-	if len(lines) != 8 {
-		t.Errorf("got %d table lines, want 8:\n%s", len(lines), out)
+	if len(lines) != 7 {
+		t.Errorf("got %d table lines, want 7:\n%s", len(lines), out)
 	}
 }
 
@@ -231,7 +241,7 @@ func TestRenderTableNarrowWidth(t *testing.T) {
 	var buf bytes.Buffer
 	opt := baseOpts()
 	opt.Width = 3
-	if err := Render(&buf, sampleUsage(), ModeTable, opt); err != nil {
+	if err := Render(&buf, sampleSnaps(), ModeTable, opt); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(buf.String(), "USAGE") {
@@ -241,7 +251,7 @@ func TestRenderTableNarrowWidth(t *testing.T) {
 
 func TestRenderTableNoMeters(t *testing.T) {
 	var buf bytes.Buffer
-	if err := Render(&buf, &usage.Usage{}, ModeTable, Options{Now: refNow}); err != nil {
+	if err := Render(&buf, emptySnaps(), ModeTable, Options{Now: refNow}); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(buf.String(), "(no usage windows reported)") {
@@ -251,23 +261,27 @@ func TestRenderTableNoMeters(t *testing.T) {
 
 func TestRenderJSON(t *testing.T) {
 	var buf bytes.Buffer
-	if err := Render(&buf, sampleUsage(), ModeJSON, baseOpts()); err != nil {
+	if err := Render(&buf, sampleSnaps(), ModeJSON, baseOpts()); err != nil {
 		t.Fatal(err)
 	}
 	var doc jsonDocument
 	if err := json.Unmarshal(buf.Bytes(), &doc); err != nil {
 		t.Fatalf("output is not valid JSON: %v\n%s", err, buf.String())
 	}
-	if doc.Plan != "Max 20x" {
-		t.Errorf("plan = %q", doc.Plan)
-	}
 	if doc.GeneratedAt != refNow.Format(time.RFC3339) {
 		t.Errorf("generated_at = %q", doc.GeneratedAt)
 	}
-	if len(doc.Meters) != 5 {
-		t.Fatalf("got %d meters", len(doc.Meters))
+	if len(doc.Providers) != 1 {
+		t.Fatalf("got %d providers", len(doc.Providers))
 	}
-	session := doc.Meters[0]
+	prov := doc.Providers[0]
+	if prov.Provider != "claude" || prov.Plan != "Max 20x" {
+		t.Errorf("provider = %+v", prov)
+	}
+	if len(prov.Meters) != 5 {
+		t.Fatalf("got %d meters", len(prov.Meters))
+	}
+	session := prov.Meters[0]
 	if session.Key != "five_hour" || session.Kind != "session" || session.Percent != 42 {
 		t.Errorf("session meter = %+v", session)
 	}
@@ -277,7 +291,7 @@ func TestRenderJSON(t *testing.T) {
 	if *session.ResetsInSeconds != int64((3*time.Hour + 44*time.Minute).Seconds()) {
 		t.Errorf("resets_in_seconds = %d", *session.ResetsInSeconds)
 	}
-	extra := doc.Meters[4]
+	extra := prov.Meters[4]
 	if extra.Kind != "extra" || extra.Detail != "$3.20 / $20.00" {
 		t.Errorf("extra meter = %+v", extra)
 	}
@@ -288,7 +302,7 @@ func TestRenderJSON(t *testing.T) {
 
 func TestRenderJSONEmptyMeters(t *testing.T) {
 	var buf bytes.Buffer
-	if err := Render(&buf, &usage.Usage{}, ModeJSON, Options{Now: refNow}); err != nil {
+	if err := Render(&buf, emptySnaps(), ModeJSON, Options{Now: refNow}); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(buf.String(), "\"meters\": []") {
@@ -304,7 +318,7 @@ func TestKindString(t *testing.T) {
 
 func TestRenderOneline(t *testing.T) {
 	var buf bytes.Buffer
-	if err := Render(&buf, sampleUsage(), ModeOneline, baseOpts()); err != nil {
+	if err := Render(&buf, sampleSnaps(), ModeOneline, baseOpts()); err != nil {
 		t.Fatal(err)
 	}
 	want := "Claude 5h:42% 7d:13% sonnet:8% opus:90% extra:16%\n"
@@ -315,7 +329,7 @@ func TestRenderOneline(t *testing.T) {
 
 func TestRenderOnelineNoData(t *testing.T) {
 	var buf bytes.Buffer
-	if err := Render(&buf, &usage.Usage{}, ModeOneline, Options{Now: refNow}); err != nil {
+	if err := Render(&buf, emptySnaps(), ModeOneline, Options{Now: refNow}); err != nil {
 		t.Fatal(err)
 	}
 	if buf.String() != "Claude: no data\n" {
@@ -326,11 +340,11 @@ func TestRenderOnelineNoData(t *testing.T) {
 func TestRenderWriteErrors(t *testing.T) {
 	modes := []Mode{ModeCompact, ModeTable, ModeJSON, ModeOneline}
 	for _, m := range modes {
-		if err := Render(errWriter{}, sampleUsage(), m, baseOpts()); err == nil {
+		if err := Render(errWriter{}, sampleSnaps(), m, baseOpts()); err == nil {
 			t.Errorf("mode %s: expected write error", m)
 		}
 		// Also exercise the empty-usage write-error path where applicable.
-		_ = Render(errWriter{}, &usage.Usage{}, m, baseOpts())
+		_ = Render(errWriter{}, emptySnaps(), m, baseOpts())
 	}
 }
 

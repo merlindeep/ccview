@@ -41,6 +41,9 @@ type Credentials struct {
 	ExpiresAt int64
 	// Plan is the raw subscriptionType string, or empty if unknown.
 	Plan string
+	// AccountID is the account identifier some providers require in a request
+	// header (Codex sends it as "chatgpt-account-id"). Empty when not applicable.
+	AccountID string
 	// Source is a human-readable description of where the token came from.
 	Source string
 }
