@@ -47,10 +47,6 @@ type Options struct {
 	Now time.Time
 	// Width is the usage bar width; when <= 0, DefaultBarWidth is used.
 	Width int
-	// ShowZeroModels includes per-model 7-day windows even at 0% utilization.
-	ShowZeroModels bool
-	// PlanLabel is the human-readable plan name shown in headers (may be empty).
-	PlanLabel string
 }
 
 func (o Options) now() time.Time {
@@ -67,21 +63,19 @@ func (o Options) width() int {
 	return o.Width
 }
 
-func (o Options) meterOptions() usage.MeterOptions {
-	return usage.MeterOptions{IncludeZeroModels: o.ShowZeroModels}
-}
-
-// Render writes the usage snapshot to w in the given mode.
-func Render(w io.Writer, u *usage.Usage, mode Mode, opt Options) error {
+// Render writes the usage snapshots to w in the given mode. Each snapshot is a
+// provider block (Claude, Codex); the human-oriented modes stack them with a
+// blank line between, machine modes group them under a "providers" array.
+func Render(w io.Writer, snaps []usage.Snapshot, mode Mode, opt Options) error {
 	switch mode {
 	case ModeCompact:
-		return renderCompact(w, u, opt)
+		return renderCompact(w, snaps, opt)
 	case ModeTable:
-		return renderTable(w, u, opt)
+		return renderTable(w, snaps, opt)
 	case ModeJSON:
-		return renderJSON(w, u, opt)
+		return renderJSON(w, snaps, opt)
 	case ModeOneline:
-		return renderOneline(w, u, opt)
+		return renderOneline(w, snaps, opt)
 	default:
 		return fmt.Errorf("unknown render mode %q", mode)
 	}

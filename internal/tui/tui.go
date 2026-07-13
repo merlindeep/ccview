@@ -24,11 +24,11 @@ import (
 // barWidth is the width of the usage bars in the dashboard.
 const barWidth = 24
 
-// Result is the outcome of a single fetch.
+// Result is the outcome of a single fetch. Snapshots holds one entry per
+// provider (Claude, Codex) that produced usage.
 type Result struct {
-	Usage *usage.Usage
-	Plan  string
-	Err   error
+	Snapshots []usage.Snapshot
+	Err       error
 }
 
 // Config configures the dashboard.
@@ -39,8 +39,6 @@ type Config struct {
 	Interval time.Duration
 	// Now returns the current time (defaults to time.Now).
 	Now func() time.Time
-	// ShowZeroModels includes per-model windows at 0% utilization.
-	ShowZeroModels bool
 }
 
 // Internal message types.
@@ -52,8 +50,7 @@ type (
 // Model is the Bubble Tea model for the dashboard.
 type Model struct {
 	cfg        Config
-	usage      *usage.Usage
-	plan       string
+	snapshots  []usage.Snapshot
 	err        error
 	lastUpdate time.Time
 	fetching   bool
@@ -116,8 +113,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.fetching = false
 		m.err = msg.Err
 		if msg.Err == nil {
-			m.usage = msg.Usage
-			m.plan = msg.Plan
+			m.snapshots = msg.Snapshots
 		}
 		m.lastUpdate = m.cfg.Now()
 	}
@@ -150,39 +146,42 @@ func (m Model) View() string {
 	}
 
 	var b strings.Builder
-	title := titleStyle.Render("Claude usage")
-	if m.plan != "" {
-		title += "  " + dimStyle.Render(m.plan)
-	}
-	b.WriteString(title + "\n\n")
 
 	switch {
 	case m.err != nil:
 		b.WriteString(errStyle.Render("error: "+m.err.Error()) + "\n\n")
 		b.WriteString(dimStyle.Render("Showing the last successful snapshot, if any.") + "\n\n")
-		m.writeMeters(&b)
-	case m.usage == nil:
+		m.writeBlocks(&b)
+	case m.snapshots == nil:
 		b.WriteString(dimStyle.Render("loading…") + "\n")
 	default:
-		m.writeMeters(&b)
+		m.writeBlocks(&b)
 	}
 
 	b.WriteString("\n" + m.footer())
 	return b.String()
 }
 
-// writeMeters appends the meter lines (or a placeholder) to b.
-func (m Model) writeMeters(b *strings.Builder) {
-	if m.usage == nil {
-		return
-	}
-	meters := m.usage.Meters(usage.MeterOptions{IncludeZeroModels: m.cfg.ShowZeroModels})
-	if len(meters) == 0 {
-		b.WriteString(dimStyle.Render("(no usage windows reported)") + "\n")
-		return
-	}
-	for _, mt := range meters {
-		b.WriteString(m.meterLine(mt) + "\n")
+// writeBlocks appends one titled block per provider snapshot (or nothing when
+// no snapshot has been received yet).
+func (m Model) writeBlocks(b *strings.Builder) {
+	for i, s := range m.snapshots {
+		if i > 0 {
+			b.WriteString("\n")
+		}
+		title := titleStyle.Render(s.Title())
+		if s.Plan != "" {
+			title += "  " + dimStyle.Render(s.Plan)
+		}
+		b.WriteString(title + "\n\n")
+
+		if len(s.Meters) == 0 {
+			b.WriteString(dimStyle.Render("(no usage windows reported)") + "\n")
+			continue
+		}
+		for _, mt := range s.Meters {
+			b.WriteString(m.meterLine(mt) + "\n")
+		}
 	}
 }
 

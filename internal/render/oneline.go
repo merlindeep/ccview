@@ -25,19 +25,28 @@ func onelineLabel(m usage.Meter) string {
 }
 
 // renderOneline writes a single compact line suitable for embedding in a status
-// bar, e.g. "Claude 5h:42% 7d:13% opus:8%". A trailing newline is included.
-func renderOneline(w io.Writer, u *usage.Usage, opt Options) error {
-	prefix := wrap(opt.Color, ansiCyan, "Claude")
-	meters := u.Meters(opt.meterOptions())
-	if len(meters) == 0 {
-		return writeString(w, prefix+": no data\n")
+// bar, e.g. "Claude 5h:42% 7d:13% opus:8%". With more than one provider the
+// per-provider segments are joined with two spaces, e.g.
+// "Claude 5h:42% 7d:13%  Codex 7d:0%". A trailing newline is included.
+func renderOneline(w io.Writer, snaps []usage.Snapshot, opt Options) error {
+	segments := make([]string, 0, len(snaps))
+	for _, s := range snaps {
+		segments = append(segments, onelineSegment(s, opt))
 	}
+	return writeString(w, strings.Join(segments, "  ")+"\n")
+}
 
-	parts := make([]string, 0, len(meters))
-	for _, m := range meters {
+// onelineSegment renders one provider's portion of the single line.
+func onelineSegment(s usage.Snapshot, opt Options) string {
+	prefix := wrap(opt.Color, ansiCyan, s.Provider.Short())
+	if len(s.Meters) == 0 {
+		return prefix + ": no data"
+	}
+	parts := make([]string, 0, len(s.Meters))
+	for _, m := range s.Meters {
 		val := fmt.Sprintf("%d%%", roundPct(m.Percent))
 		val = wrap(opt.Color, colorFor(m.Percent), val)
 		parts = append(parts, onelineLabel(m)+":"+val)
 	}
-	return writeString(w, prefix+" "+strings.Join(parts, " ")+"\n")
+	return prefix + " " + strings.Join(parts, " ")
 }

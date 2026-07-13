@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Codex (OpenAI/ChatGPT) usage support.** `ccview` now reads the ChatGPT
+  backend usage endpoint (`GET /backend-api/wham/usage`) and renders Codex's
+  rolling and weekly rate-limit windows alongside Claude's. When credentials for
+  both providers are present, both are shown, each in its own titled block.
+- `--provider claude|codex|all` (default `all`, `-p`) to restrict which
+  providers are shown.
+- Codex OAuth token resolution from `CODEX_ACCESS_TOKEN` and
+  `~/.codex/auth.json`, read-only, mirroring the Claude chain. Token expiry is
+  derived from the access token's JWT `exp` claim.
+- `--auto-reload-expired-token` now also refreshes an expired Codex token by
+  running `codex login status` (override with `CCVIEW_CODEX_RELOAD_CMD`).
+
+### Changed
+
+- **JSON output is now a `providers` array** (`{"generated_at", "providers":
+  [{"provider", "plan", "meters"}]}`) so one or several providers share a
+  uniform shape. This is a breaking change for consumers of the previous
+  single-provider `{"plan", "meters"}` document.
+- The `table` mode now heads each provider with a title line instead of the
+  standalone `Plan:` line.
+
 ## [0.1.1] - 2026-06-14
 
 ### Added

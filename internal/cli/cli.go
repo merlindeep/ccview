@@ -31,24 +31,26 @@ import (
 	"github.com/merlindeep/claude-cost-viewer/internal/client"
 	"github.com/merlindeep/claude-cost-viewer/internal/render"
 	"github.com/merlindeep/claude-cost-viewer/internal/tui"
+	"github.com/merlindeep/claude-cost-viewer/internal/usage"
 )
 
-const longDescription = `ccview is a compact console monitor for Claude usage limits.
+const longDescription = `ccview is a compact console monitor for Claude and Codex usage limits.
 
-It shows the same utilization the "/usage" view in Claude Code and the desktop
-app report, read from Claude's OAuth usage endpoint:
+It shows the same utilization the "/usage" view in Claude Code (and "/status" in
+Codex) reports, read from each provider's usage endpoint:
 
   - Session   the rolling 5-hour window
   - Weekly    the 7-day window (plus per-model Sonnet/Opus windows on Max plans)
   - Extra     pay-as-you-go extra-usage credits, when enabled
 
 Which rows appear depends on your subscription plan and how it is connected;
-ccview renders whatever the endpoint returns.
+ccview renders whatever the endpoint returns. When you are logged into both
+providers, both are shown; restrict with --provider claude|codex|all.
 
-The OAuth token is read (never written) from, in priority order:
-  1. $CLAUDE_CODE_OAUTH_TOKEN
-  2. the macOS Keychain entry "Claude Code-credentials"
-  3. ~/.claude/.credentials.json`
+OAuth tokens are read (never written) from, in priority order:
+  Claude: $CLAUDE_CODE_OAUTH_TOKEN, the macOS Keychain entry
+          "Claude Code-credentials", then ~/.claude/.credentials.json
+  Codex:  $CODEX_ACCESS_TOKEN, then ~/.codex/auth.json`
 
 // Execute is the entry point used by the main package. It runs the CLI and
 // exits with the resulting status code.
@@ -75,20 +77,44 @@ func run(args []string, out, errW io.Writer) int {
 // defaultDeps returns dependencies wired to the real host environment.
 func defaultDeps(out, errW io.Writer) deps {
 	return deps{
-		Resolver:    auth.New(),
-		NewFetcher:  func(version string) fetcher { return client.New(version) },
-		Version:     func() string { return client.DetectClaudeVersionDefault(os.Getenv) },
-		Now:         time.Now,
-		Sleep:       sleepCtx,
-		RunTUI:      tui.Run,
-		Reload:      func(ctx context.Context) error { return runReload(ctx, os.Getenv) },
-		ClearScreen: isTerminal(out),
-		Out:         out,
-		Err:         errW,
-		MockFile:    func() string { return os.Getenv("CCVIEW_MOCK_FILE") },
-		MockPlan:    func() string { return os.Getenv("CCVIEW_MOCK_PLAN") },
-		ReadFile:    os.ReadFile,
+		Resolver:        auth.New(),
+		NewFetcher:      func(version string) fetcher { return client.New(version) },
+		Reload:          func(ctx context.Context) error { return runReload(ctx, reloadCmdline(os.Getenv)) },
+		CodexResolver:   auth.NewCodex(),
+		NewCodexFetcher: func() codexFetcher { return client.NewCodex() },
+		CodexReload:     func(ctx context.Context) error { return runReload(ctx, codexReloadCmdline(os.Getenv)) },
+		Version:         func() string { return client.DetectClaudeVersionDefault(os.Getenv) },
+		Now:             time.Now,
+		Sleep:           sleepCtx,
+		RunTUI:          tui.Run,
+		ClearScreen:     isTerminal(out),
+		Out:             out,
+		Err:             errW,
+		MockFile:        func() string { return os.Getenv("CCVIEW_MOCK_FILE") },
+		MockPlan:        func() string { return os.Getenv("CCVIEW_MOCK_PLAN") },
+		ReadFile:        os.ReadFile,
 	}
+}
+
+// parseProviders converts the --provider flag value into a provider selection.
+// "all" (or empty) yields nil, meaning every configured provider is shown.
+func parseProviders(s string) ([]usage.Provider, error) {
+	s = strings.ToLower(strings.TrimSpace(s))
+	if s == "" || s == "all" {
+		return nil, nil
+	}
+	var out []usage.Provider
+	for _, part := range strings.Split(s, ",") {
+		switch strings.TrimSpace(part) {
+		case "claude":
+			out = append(out, usage.ProviderClaude)
+		case "codex":
+			out = append(out, usage.ProviderCodex)
+		default:
+			return nil, fmt.Errorf("invalid provider %q (valid: all, claude, codex)", part)
+		}
+	}
+	return out, nil
 }
 
 // newRootCmd constructs the root command bound to the given dependencies.
@@ -101,6 +127,7 @@ func newRootCmd(d deps) *cobra.Command {
 		showAll         bool
 		asJSON          bool
 		modeStr         string
+		providerStr     string
 		autoReloadToken bool
 	)
 
@@ -123,6 +150,11 @@ func newRootCmd(d deps) *cobra.Command {
 				return err
 			}
 
+			providers, err := parseProviders(providerStr)
+			if err != nil {
+				return err
+			}
+
 			color := wantColor(d.Out, noColor)
 			o := runOptions{
 				Interval:        effInterval,
@@ -130,6 +162,7 @@ func newRootCmd(d deps) *cobra.Command {
 				Color:           color,
 				ShowZeroModels:  showAll,
 				AutoReloadToken: autoReloadToken,
+				Providers:       providers,
 			}
 
 			// The TUI is selected via mode but does not go through the render
@@ -165,6 +198,7 @@ func newRootCmd(d deps) *cobra.Command {
 	flags.BoolVar(&asJSON, "json", false, "shortcut for --mode json")
 	flags.BoolVar(&noColor, "no-color", false, "disable ANSI colours (also honours the NO_COLOR environment variable)")
 	flags.BoolVarP(&showAll, "all", "a", false, "show per-model windows even when at 0%")
+	flags.StringVarP(&providerStr, "provider", "p", "all", "which providers to show: all, claude, codex (comma-separated)")
 	flags.BoolVar(&autoReloadToken, "auto-reload-expired-token", false,
 		"if the stored token has expired, run Claude Code once to reload it "+
 			"(uses a little quota; at most once per 5m; override with CCVIEW_RELOAD_CMD)")

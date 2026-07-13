@@ -9,29 +9,37 @@ import (
 	"github.com/merlindeep/claude-cost-viewer/internal/usage"
 )
 
-// renderCompact reproduces the original at-a-glance view: a title with the plan
-// name, then one indented bar line per available window. This is the default
-// mode and the one intended for the long-running watch loop.
-func renderCompact(w io.Writer, u *usage.Usage, opt Options) error {
+// renderCompact reproduces the original at-a-glance view: for each provider a
+// title with the plan name, then one indented bar line per available window.
+// Multiple providers are stacked with a blank line between them. This is the
+// default mode and the one intended for the long-running watch loop.
+func renderCompact(w io.Writer, snaps []usage.Snapshot, opt Options) error {
 	var b strings.Builder
 	now := opt.now()
+	for i, s := range snaps {
+		if i > 0 {
+			b.WriteString("\n")
+		}
+		compactBlock(&b, s, opt, now)
+	}
+	return writeString(w, b.String())
+}
 
-	title := wrap(opt.Color, ansiBold+ansiCyan, "Claude usage")
-	if opt.PlanLabel != "" {
-		title += "  " + wrap(opt.Color, ansiDim, opt.PlanLabel)
+// compactBlock writes a single provider's title and meter lines.
+func compactBlock(b *strings.Builder, s usage.Snapshot, opt Options, now time.Time) {
+	title := wrap(opt.Color, ansiBold+ansiCyan, s.Title())
+	if s.Plan != "" {
+		title += "  " + wrap(opt.Color, ansiDim, s.Plan)
 	}
 	b.WriteString(title + "\n")
 
-	meters := u.Meters(opt.meterOptions())
-	if len(meters) == 0 {
+	if len(s.Meters) == 0 {
 		b.WriteString("  " + wrap(opt.Color, ansiDim, "(no usage windows reported)") + "\n")
-		return writeString(w, b.String())
+		return
 	}
-
-	for _, m := range meters {
+	for _, m := range s.Meters {
 		b.WriteString(compactLine(m, opt, now) + "\n")
 	}
-	return writeString(w, b.String())
 }
 
 // compactLine formats one meter as:

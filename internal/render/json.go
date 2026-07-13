@@ -19,11 +19,18 @@ type jsonMeter struct {
 	Detail          string  `json:"detail,omitempty"`
 }
 
-// jsonDocument is the top-level JSON output.
+// jsonProvider is one provider's block in the JSON output.
+type jsonProvider struct {
+	Provider string      `json:"provider"`
+	Plan     string      `json:"plan,omitempty"`
+	Meters   []jsonMeter `json:"meters"`
+}
+
+// jsonDocument is the top-level JSON output. Providers are always emitted as an
+// array so consumers see a uniform shape whether one or several are present.
 type jsonDocument struct {
-	Plan        string      `json:"plan,omitempty"`
-	GeneratedAt string      `json:"generated_at"`
-	Meters      []jsonMeter `json:"meters"`
+	GeneratedAt string         `json:"generated_at"`
+	Providers   []jsonProvider `json:"providers"`
 }
 
 // kindString maps a meter kind to a stable JSON token.
@@ -42,31 +49,38 @@ func kindString(k usage.Kind) string {
 	}
 }
 
-// renderJSON writes the snapshot as indented JSON. Reset timestamps are emitted
+// renderJSON writes the snapshots as indented JSON. Reset timestamps are emitted
 // in RFC3339 form alongside the number of seconds remaining, so consumers can
 // use whichever is convenient.
-func renderJSON(w io.Writer, u *usage.Usage, opt Options) error {
+func renderJSON(w io.Writer, snaps []usage.Snapshot, opt Options) error {
 	now := opt.now()
 	doc := jsonDocument{
-		Plan:        opt.PlanLabel,
 		GeneratedAt: now.Format(time.RFC3339),
-		Meters:      []jsonMeter{},
+		Providers:   []jsonProvider{},
 	}
-	for _, m := range u.Meters(opt.meterOptions()) {
-		jm := jsonMeter{
-			Key:     m.Key,
-			Label:   m.Label,
-			Kind:    kindString(m.Kind),
-			Percent: m.Percent,
-			Detail:  m.Detail,
+	for _, s := range snaps {
+		p := jsonProvider{
+			Provider: string(s.Provider),
+			Plan:     s.Plan,
+			Meters:   []jsonMeter{},
 		}
-		if m.HasReset {
-			ts := m.ResetsAt.Format(time.RFC3339)
-			jm.ResetsAt = &ts
-			secs := int64(m.ResetsAt.Sub(now).Seconds())
-			jm.ResetsInSeconds = &secs
+		for _, m := range s.Meters {
+			jm := jsonMeter{
+				Key:     m.Key,
+				Label:   m.Label,
+				Kind:    kindString(m.Kind),
+				Percent: m.Percent,
+				Detail:  m.Detail,
+			}
+			if m.HasReset {
+				ts := m.ResetsAt.Format(time.RFC3339)
+				jm.ResetsAt = &ts
+				secs := int64(m.ResetsAt.Sub(now).Seconds())
+				jm.ResetsInSeconds = &secs
+			}
+			p.Meters = append(p.Meters, jm)
 		}
-		doc.Meters = append(doc.Meters, jm)
+		doc.Providers = append(doc.Providers, p)
 	}
 
 	enc := json.NewEncoder(w)
