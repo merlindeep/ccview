@@ -333,7 +333,7 @@ func runWatch(ctx context.Context, d deps, o runOptions) error {
 			continue
 		}
 
-		snaps, notFound := collectSnapshots(ctx, d, o, providers, statusW, now)
+		snaps, notFound := collectSnapshots(ctx, o, providers, statusW, now)
 
 		if len(snaps) > 0 {
 			if err := render.Render(d.Out, snaps, o.Mode, o.renderOptions(now)); err != nil {
@@ -363,7 +363,7 @@ func runWatch(ctx context.Context, d deps, o runOptions) error {
 // whether to surface a "no token" message (only when nothing rendered). Fetch
 // errors for providers that *did* have a token are printed immediately, since
 // they represent real problems worth showing even when another provider worked.
-func collectSnapshots(ctx context.Context, d deps, o runOptions, providers []*providerRuntime, statusW io.Writer, now time.Time) ([]usage.Snapshot, []*providerRuntime) {
+func collectSnapshots(ctx context.Context, o runOptions, providers []*providerRuntime, statusW io.Writer, now time.Time) ([]usage.Snapshot, []*providerRuntime) {
 	var snaps []usage.Snapshot
 	var notFound []*providerRuntime
 	multi := len(providers) > 1

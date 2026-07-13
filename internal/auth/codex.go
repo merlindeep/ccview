@@ -18,7 +18,7 @@ const CodexEnvToken = "CODEX_ACCESS_TOKEN"
 var codexAuthFile = filepath.Join(".codex", "auth.json")
 
 // ErrCodexNotFound is returned when no Codex credential source yields a token.
-var ErrCodexNotFound = errors.New("Codex OAuth token not found (checked $" + CodexEnvToken + ", ~/.codex/auth.json)")
+var ErrCodexNotFound = errors.New("OAuth token for Codex not found (checked $" + CodexEnvToken + ", ~/.codex/auth.json)")
 
 // codexRawCreds matches the JSON shape the Codex CLI stores in ~/.codex/auth.json.
 type codexRawCreds struct {
